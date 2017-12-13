@@ -208,8 +208,8 @@ typedef struct rt_file_s
 {
 	int               f_oflags;   /* Open mode flags */
 	off_t             f_pos;      /* File position */
-	struct inode     *f_inode;    /* Driver or rt_file_t system interface */
-	void             *f_priv;     /* Per rt_file_t driver private data */
+	struct rt_inode_s *f_inode;    /* Driver or rt_file_t system interface */
+	void              *f_priv;     /* Per rt_file_t driver private data */
 } rt_file_t;
 
 /* This defines a list of files indexed by the rt_file_t descriptor */
