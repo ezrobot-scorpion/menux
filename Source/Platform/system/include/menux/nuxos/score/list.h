@@ -18,7 +18,7 @@
 * INCLUDES
 *******************************************************************************/
 #include <config.h>
-#include <types.h>
+#include <menux/types.h>
 
 #ifdef __cplusplus
 extern "C" {

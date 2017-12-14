@@ -17,6 +17,7 @@
 #include <menux/nuxos/fs/devfs.h>
 #include <menux/nuxos/io/devserial.h>
 #include <menux/nuxos/io/devserialimpl.h>
+#include <menux/nuxos/score/irq.h>
 
 /*!
 ********************************************************************************
@@ -96,14 +97,14 @@ int devserial_open(struct rt_file_s *filep)
 
 	if (tmp == 1)
 	{
-		//irqstate_t flags = enter_critical_section();
+		irqstate_t flags = rtx_irq_enter_criticalsection();
 
 		if (!dev->isconsole)
 		{
 			ret = dev->ops->setup(dev);
 			if (ret < 0)
 			{
-				//leave_critical_section(flags);
+				rtx_irq_leave_criticalsection(flags);
 				goto errout_with_sem;
 			}
 		}
@@ -112,7 +113,7 @@ int devserial_open(struct rt_file_s *filep)
 		if (ret < 0)
 		{
 			dev->ops->shutdown(dev);
-			//leave_critical_section(flags);
+			rtx_irq_leave_criticalsection(flags);
 			goto errout_with_sem;
 		}
 
@@ -122,7 +123,7 @@ int devserial_open(struct rt_file_s *filep)
 		dev->recvbuf.tail = 0;
 
 		dev->ops->txintsetup(dev, true);
-		//leave_critical_section(flags);
+		rtx_irq_leave_criticalsection(flags);
 	}
 
 	dev->open_count = tmp;
@@ -164,14 +165,14 @@ int devserial_close(struct rt_file_s *filep)
 	{
 	}
 
-	//flags = enter_critical_section(); /* Disable interrupts */
+	flags = rtx_irq_enter_criticalsection(); /* Disable interrupts */
 	dev->ops->detach(dev);
 	if (!dev->isconsole)
 	{
 		dev->ops->shutdown(dev);
 	}
 
-	//leave_critical_section(flags);
+	rtx_irq_leave_criticalsection(flags);
 
 	//sem_reset(&dev->xmitsem, 0);
 	//sem_reset(&dev->recvsem, 0);
@@ -204,7 +205,7 @@ int devserial_ioctl(struct rt_file_s *filep, int cmd, unsigned long arg)
 			case FIONREAD:
 			{
 				int count;
-				//irqstate_t flags = enter_critical_section();
+				irqstate_t flags = rtx_irq_enter_criticalsection();
 
 				if (dev->recvbuf.tail <= dev->recvbuf.head)
 				{
@@ -215,7 +216,7 @@ int devserial_ioctl(struct rt_file_s *filep, int cmd, unsigned long arg)
 					count = dev->recvbuf.size - (dev->recvbuf.tail - dev->recvbuf.head);
 				}
 
-				//leave_critical_section(flags);
+				rtx_irq_leave_criticalsection(flags);
 
 				*(int *) ((uintptr_t) arg) = count;
 				ret = 0;
@@ -225,7 +226,7 @@ int devserial_ioctl(struct rt_file_s *filep, int cmd, unsigned long arg)
 			case FIONWRITE:
 			{
 				int count;
-				//irqstate_t flags = enter_critical_section();
+				irqstate_t flags = rtx_irq_enter_criticalsection();
 
 				if (dev->xmitbuf.tail <= dev->xmitbuf.head)
 				{
@@ -236,7 +237,7 @@ int devserial_ioctl(struct rt_file_s *filep, int cmd, unsigned long arg)
 					count = dev->xmitbuf.size - (dev->xmitbuf.tail - dev->xmitbuf.head);
 				}
 
-				//leave_critical_section(flags);
+				rtx_irq_leave_criticalsection(flags);
 
 				*(int *) ((uintptr_t) arg) = count;
 				ret = 0;
@@ -246,7 +247,7 @@ int devserial_ioctl(struct rt_file_s *filep, int cmd, unsigned long arg)
 			case FIONSPACE:
 			{
 				int count;
-				//irqstate_t flags = enter_critical_section();
+				irqstate_t flags = rtx_irq_enter_criticalsection();
 
 				if (dev->xmitbuf.head < dev->xmitbuf.tail)
 				{
@@ -258,7 +259,7 @@ int devserial_ioctl(struct rt_file_s *filep, int cmd, unsigned long arg)
 							- 1;
 				}
 
-				//leave_critical_section(flags);
+				rtx_irq_leave_criticalsection(flags);
 
 				*(int *) ((uintptr_t) arg) = count;
 				ret = 0;
@@ -335,7 +336,7 @@ ssize_t devserial_read(struct rt_file_s *filep, char *buf, os_size_t len)
 			dev->ops->rxintsetup(dev, false);
 			if (rxbuf->head == rxbuf->tail)
 			{
-				//flags = enter_critical_section();
+				flags = rtx_irq_enter_criticalsection();
 				dev->ops->rxintsetup(dev, true);
 				if (dev->disconnected)
 				{
@@ -347,7 +348,7 @@ ssize_t devserial_read(struct rt_file_s *filep, char *buf, os_size_t len)
 					//ret = uart_takesem(&dev->recvsem, true);
 				}
 
-				//leave_critical_section(flags);
+				rtx_irq_leave_criticalsection(flags);
 
 				if (ret < 0 || dev->disconnected)
 				{
@@ -388,8 +389,7 @@ ssize_t devserial_write(struct rt_file_s *filep, const char *buf, os_size_t len)
 	int ret;
 	char ch;
 
-	/*
-	if (up_interrupt_context() || getpid() == 0)
+	//if (up_interrupt_context() || getpid() == 0)
 	{
 		if (dev->disconnected)
 		{
@@ -397,9 +397,9 @@ ssize_t devserial_write(struct rt_file_s *filep, const char *buf, os_size_t len)
 		}
 		if (dev->isconsole)
 		{
-			irqstate_t flags = enter_critical_section();
-			ret = uart_irqwrite(dev, buffer, buflen);
-			leave_critical_section(flags);
+			irqstate_t flags = rtx_irq_enter_criticalsection();
+			//ret = uart_irqwrite(dev, buffer, buflen);
+			rtx_irq_leave_criticalsection(flags);
 			return ret;
 		}
 		else
@@ -407,7 +407,6 @@ ssize_t devserial_write(struct rt_file_s *filep, const char *buf, os_size_t len)
 			return -E_EPERM;
 		}
 	}
-	*/
 
 	OSMutexPend(&dev->xmitbuf.mutex, 0, OS_OPT_PEND_BLOCKING, NULL, &error);
 	if (dev->disconnected)
@@ -486,7 +485,7 @@ int devserial_putxmitchar(io_serial_dev_t *dev, int ch, bool oktoblock)
 		}
 		else if (oktoblock)
 		{
-			//flags = enter_critical_section();
+			flags = rtx_irq_enter_criticalsection();
 
 			if (nexthead != dev->xmitbuf.tail)
 			{
@@ -507,8 +506,7 @@ int devserial_putxmitchar(io_serial_dev_t *dev, int ch, bool oktoblock)
 				dev->ops->txintsetup(dev, false);
 			}
 
-			//leave_critical_section(flags);
-
+			rtx_irq_leave_criticalsection(flags);
 			if (dev->disconnected)
 			{
 				return -E_ENOTCONN;

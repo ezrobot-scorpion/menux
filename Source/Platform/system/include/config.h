@@ -13,6 +13,9 @@
 #ifndef INCLUDE_CONFIG_H
 #define INCLUDE_CONFIG_H
 
+#define CONFIG_WCHAR_BUILTIN
+
+
                                              /* ---------------------------- MISCELLANEOUS -------------------------- */
 #define OS_CFG_APP_HOOKS_EN             0u   /* Enable (1) or Disable (0) application specific hooks                  */
 #define OS_CFG_ARG_CHK_EN               1u   /* Enable (1) or Disable (0) argument checking                           */
